@@ -3,7 +3,7 @@ A simple AI-powered Instagram Bio Generator built using HTML, CSS, and JavaScrip
 It uses OpenRouter API to generate creative Instagram bios based on user input.
 
 ## 🚀 Live Demo
-[Click Here](https://yourusername.github.io/instagram-bio-generator/)
+[Click Here](https://instagram-bio-generator.onrender.com)
 
 ## 🧰 Technologies Used
 - HTML5
