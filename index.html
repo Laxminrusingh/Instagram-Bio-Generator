@@ -379,10 +379,36 @@
             });
         });
 
-        async function generateBios() {
-            const name = nameInput.value.trim();
-            const profession = professionInput.value.trim();
-            const interests = interestsInput.value.trim();
+        // Bio generation templates by tone (functions that return bios)
+        function getBioTemplates(n, p, i) {
+            return {
+                professional: [
+                    `💼 ${n} | ${p}${i ? ' • ' + i : ''}`,
+                    `${p}${i ? ' passionate about ' + i : ''} | ${n} 🎯`,
+                    `👨‍💼 Professional ${p}${i ? ', interested in ' + i : ''}`
+                ],
+                cool: [
+                    `${n} - ${p}${i ? ' | into ' + i : ''} 🔥`,
+                    `${p} by day, ${i ? i.split(',')[0] : 'creator'} by night 🌙`,
+                    `🚀 Living my best life - ${i ? i.split(',')[0] : 'just vibing'}${p ? ' as a ' + p : ''}`
+                ],
+                funny: [
+                    `😂 ${n} | ${p}${i ? ' | ' + i : ''} | Professional overthinker`,
+                    `${p} who ${i ? 'loves ' + i.split(',')[0] : 'just wings it'}. Coffee dependent ☕`,
+                    `😄 Living, laughing, and ${p ? p.toLowerCase() : 'existing'}. ${i ? 'Also: ' + i.split(',')[0] : ''}`
+                ],
+                aesthetic: [
+                    `✨ ${n} ✨${p ? ' | ' + p : ''}${i ? ' | ' + i : ''}`,
+                    `${p || 'creating'} with purpose | ${i ? i.split(',')[0] : 'mindfully living'} 🌿`,
+                    `🌸 dreamer • ${p ? p : 'explorer'}${i ? ' • ' + i.split(',')[0] : ''}`
+                ]
+            };
+        }
+
+        function generateBios() {
+            const name = nameInput.value.trim() || 'You';
+            const profession = professionInput.value.trim() || 'Creator';
+            const interests = interestsInput.value.trim() || 'life, growth';
             const includeEmojis = includeEmojisCheckbox.checked;
             const selectedToneElement = document.querySelector('.tone-btn.active');
 
@@ -392,94 +418,50 @@
             }
             const selectedTone = selectedToneElement.dataset.tone;
 
-            if (!name && !profession && !interests) {
-                alert('Please fill in at least one field (Name, Profession, or Interests)');
-                return;
-            }
-
             generateBtn.disabled = true;
             generateBtn.textContent = 'Generating...';
             bioSuggestionsDiv.innerHTML = '<p class="info">Generating suggestions...</p>';
 
             try {
-                let prompt = `Generate 3 distinct and creative Instagram bio suggestions based on the following details:\n`;
-                if (name) prompt += `- Name: ${name}\n`;
-                if (profession) prompt += `- Profession/Role: ${profession}\n`;
-                if (interests) prompt += `- Interests: ${interests}\n`;
-                prompt += `- Desired Tone: ${selectedTone}\n`;
-                prompt += `- Emojis: ${includeEmojis ? 'Yes, include 1-3 relevant emojis per bio' : 'No emojis'}\n\n`;
+                // Simulate a small delay for better UX
+                setTimeout(() => {
+                    const bioTemplates = getBioTemplates(name, profession, interests);
+                    const templates = bioTemplates[selectedTone] || bioTemplates.professional;
+                    const bios = templates.map(template => {
+                        let bio = template;
+                        
+                        // Remove emojis if not wanted
+                        if (!includeEmojis) {
+                            // Remove common emoji characters
+                            bio = bio.replace(/[💼🎯👨‍💼🔥🌙🚀😂☕😄✨🌿🌸]/g, '').trim();
+                            // Clean up extra spaces
+                            bio = bio.replace(/\s+/g, ' ').trim();
+                        }
+                        
+                        // Ensure bio is under 150 characters
+                        if (bio.length > 150) {
+                            bio = bio.substring(0, 147) + '...';
+                        }
+                        
+                        return bio;
+                    });
 
-                prompt += `Constraints:\n`;
-                prompt += `- Each bio MUST be under 150 characters.\n`;
-                prompt += `- Bios should be suitable for an Instagram profile.\n`;
-                prompt += `- Focus on being catchy and reflective of the tone.\n`;
-                prompt += `- If profession is mentioned, integrate it naturally.\n`;
-                prompt += `- Output ONLY the 3 bio suggestions, each on a new line. Do not add numbering, greetings, or extra text.`;
-
-                console.log("Sending prompt to API:", prompt);
-
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        'model': 'mistralai/mistral-7b-instruct:free',
-                        'messages': [{ 'role': 'user', 'content': prompt }],
-                        'max_tokens': 200
-                    })
-                });
-
-                console.log("API Response Status:", response.status);
-
-                if (!response.ok) {
-                    let errorMsg = `API Error (${response.status})`;
-                    try {
-                        const errorData = await response.json();
-                        console.error("API Error Details:", errorData);
-                        errorMsg += `: ${errorData.error?.message || response.statusText}`;
-                    } catch (e) {
-                        errorMsg += `: ${response.statusText}`;
+                    if (bios.length === 0) {
+                        bioSuggestionsDiv.innerHTML = '<p class="info">No suggestions generated. Try adjusting your inputs.</p>';
+                    } else {
+                        displayBios(bios);
                     }
-                    throw new Error(errorMsg);
-                }
 
-                const data = await response.json();
-                console.log("API Response Data:", data);
-
-                if (!data.choices || data.choices.length === 0 || !data.choices[0].message || !data.choices[0].message.content) {
-                    throw new Error("Received invalid or empty response from API.");
-                }
-                const rawContent = data.choices[0].message.content;
-                console.log("Raw AI Response:", rawContent);
-
-                const bios = parseBiosFromResponse(rawContent);
-
-                if (bios.length === 0) {
-                    console.warn("Parsing failed to extract bios from:", rawContent);
-                    bioSuggestionsDiv.innerHTML = '<p class="error">Couldn\'t extract bios from the response. Raw response logged to console.</p>';
-                } else {
-                    displayBios(bios);
-                }
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate Bios';
+                }, 500);
 
             } catch (error) {
                 console.error('Error generating bios:', error);
-                bioSuggestionsDiv.innerHTML = `<p class="error">Error: ${error.message}. Please check console or try again.</p>`;
-            } finally {
+                bioSuggestionsDiv.innerHTML = `<p class="error">Error: ${error.message}. Please try again.</p>`;
                 generateBtn.disabled = false;
                 generateBtn.textContent = 'Generate Bios';
             }
-        }
-
-        function parseBiosFromResponse(content) {
-            if (!content) return [];
-            return content.split('\n')
-                .map(line => line.trim())
-                .filter(line => line.length > 5 && line.length <= 160)
-                .filter(line => !line.toLowerCase().startsWith("here are") && !line.toLowerCase().startsWith("sure,") && !line.toLowerCase().includes(":") && !line.match(/^\d+\.\s/))
-                .map(line => line.replace(/^["'\-]\s*/, ''))
-                .slice(0, 5);
         }
 
         function displayBios(bios) {
